@@ -22,6 +22,44 @@ void *aligned_buffer = (void *)CONFIG_FIXED_SDHCI_ALIGNED_BUFFER;
 void *aligned_buffer;
 #endif
 
+#ifdef CONFIG_SDIO_XFRDEBUG
+struct sam_sdmmcregs_s
+{
+  /* All read-able SDMMC registers */
+
+  uint32_t dsaddr;               /* DMA System Address Register */
+  uint32_t blkattr;              /* Block Attributes Register */
+  uint32_t cmdarg;               /* Command Argument Register */
+  uint32_t xferty;               /* Transfer Type Register */
+  uint32_t cmdrsp0;              /* Command Response 0 */
+  uint32_t cmdrsp1;              /* Command Response 1 */
+  uint32_t cmdrsp2;              /* Command Response 2 */
+  uint32_t cmdrsp3;              /* Command Response 3 */
+  uint32_t dbap;                 /* Data buffer access port */
+  uint32_t prsstat;              /* Present State Register */
+  uint32_t proctl;               /* Protocol Control Register */
+  uint32_t sysctl;               /* System Control Register */
+  uint32_t irqstat;              /* Interrupt Status Register */
+  uint32_t irqstaten;            /* Interrupt Status Enable Register */
+  uint32_t irqsigen;             /* Interrupt Signal Enable Register */
+  uint32_t ac12err;              /* Auto CMD12 Error Status Register */
+  uint32_t htcapblt0;            /* Host Controller Capabilities */
+  uint32_t htcapblt1;            /* Host Controller Capabilities */
+  uint32_t wml;                  /* Watermark Level Register */
+  uint32_t mixctrl;              /* Mixer Control */
+  uint32_t fevent;               /* Force Event */
+  uint32_t admaes;               /* ADMA Error Status Register */
+  uint32_t adsaddr;              /* ADMA System Address Register */
+  uint32_t dllctrl;              /* Delay line control */
+  uint32_t dllstat;              /* Delay line status */
+  uint32_t clktune;              /* Clock tune and control */
+  uint32_t tuningctrl;           /* Tuning Control */
+};
+
+static void sam_showregs(struct sdhci_host *host, const char *msg);
+
+#endif
+
 static void sdhci_reset(struct sdhci_host *host, u8 mask)
 {
 	unsigned long timeout;
@@ -271,7 +309,10 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 
 	mask = SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT;
 
-	/* We shouldn't wait for data inihibit for stop commands, even
+	pr_info(":: sdhci_send_command: command: %d\n", cmd->cmdidx);
+    sam_showregs(host, ":: sdhci_send_command: before send");
+
+	/* We shouldn't wait for data inhibit for stop commands, even
 	   though they might use busy signaling */
 	if (cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION ||
 	    ((cmd->cmdidx == MMC_CMD_SEND_TUNING_BLOCK ||
@@ -416,6 +457,8 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 	struct sdhci_host *host = mmc->priv;
 	unsigned int div, clk = 0, timeout;
 
+	pr_info(":: set_clock: Entry\n");
+
 	/* Wait max 20 ms */
 	timeout = 200;
 	while (sdhci_readl(host, SDHCI_PRESENT_STATE) &
@@ -443,6 +486,7 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		 * Check if the Host Controller supports Programmable Clock
 		 * Mode.
 		 */
+        pr_info(":: set_clock: Programmable clock mode");
 		if (host->clk_mul) {
 			for (div = 1; div <= 1024; div++) {
 				if ((host->max_clk / div) <= clock)
@@ -470,6 +514,7 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 			div >>= 1;
 		}
 	} else {
+        pr_info(":: set_clock: Regular clock mode\n");
 		/* Version 2.00 divisors must be a power of 2. */
 		for (div = 1; div < SDHCI_MAX_DIV_SPEC_200; div *= 2) {
 			if ((host->max_clk / div) <= clock)
@@ -485,7 +530,15 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 	clk |= ((div & SDHCI_DIV_HI_MASK) >> SDHCI_DIV_MASK_LEN)
 		<< SDHCI_DIVIDER_HI_SHIFT;
 	clk |= SDHCI_CLOCK_INT_EN;
-	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+#ifdef CONFIG_SDIO_XFRDEBUG
+    pr_info(":: set_clock: clocking\n");
+    pr_info(":: set_clock: clock control reg: [%08x]: %08x\n", SDHCI_CLOCK_CONTROL, sdhci_readl(host, SDHCI_CLOCK_CONTROL));
+    sam_showregs(host, "::> set_clock: clocking before write");
+#endif
+    sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+#ifdef CONFIG_SDIO_XFRDEBUG
+    sam_showregs(host, "::> set_clock: clocking after write");
+#endif
 
 	/* Wait max 20 ms */
 	timeout = 20;
@@ -501,7 +554,17 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 	}
 
 	clk |= SDHCI_CLOCK_CARD_EN;
+    pr_info(":: set_clock: sd clock enable\n");
+    puts("||| set_clock: sd clock enable\n");
+#ifdef CONFIG_SDIO_XFRDEBUG
+    pr_info(":: set_clock: clock control reg: [%08x]: %08x\n", SDHCI_CLOCK_CONTROL, sdhci_readl(host, SDHCI_CLOCK_CONTROL));
+    sam_showregs(host, "::> set_clock: enable before write");
+#endif
 	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+#ifdef CONFIG_SDIO_XFRDEBUG
+    pr_info(":: set_clock: clock control reg: [%08x]: %08x\n", SDHCI_CLOCK_CONTROL, sdhci_readl(host, SDHCI_CLOCK_CONTROL));
+    sam_showregs(host, "::> set_clock: enable after write");
+#endif
 	return 0;
 }
 
@@ -714,6 +777,8 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 #if CONFIG_IS_ENABLED(DM_MMC)
 	u64 dt_caps, dt_caps_mask;
 
+    sam_showregs(host, "::sdhci_setup_cfg: before config");
+
 	dt_caps_mask = dev_read_u64_default(host->mmc->dev,
 					    "sdhci-caps-mask", 0);
 	dt_caps = dev_read_u64_default(host->mmc->dev,
@@ -856,6 +921,8 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 
 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 
+    sam_showregs(host, "::sdhci_setup_cfg: after config");
+
 	return 0;
 }
 
@@ -882,3 +949,124 @@ int add_sdhci(struct sdhci_host *host, u32 f_max, u32 f_min)
 	return 0;
 }
 #endif
+
+
+
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . */
+/* Register logging support */
+
+#ifdef CONFIG_SDIO_XFRDEBUG
+/****************************************************************************
+ * Name: sam_getreg
+ *
+ * Description:
+ *  Read an SDMMC register
+ *
+ ****************************************************************************/
+
+static inline u32 sam_getreg(struct sdhci_host *host, unsigned int offset)
+{
+    u32 value = sdhci_readl(host, offset);
+    return value;
+}
+
+/****************************************************************************
+ * Name: sam_sdmmcsample
+ *
+ * Description:
+ *   Sample SDIO registers
+ *
+ ****************************************************************************/
+
+static void sam_sdmmcsample(struct sdhci_host *host, struct sam_sdmmcregs_s *regs)
+{
+    regs->dsaddr    = sam_getreg(host, SAMA5_SDMMC_DSADDR_OFFSET);
+    regs->blkattr   = sam_getreg(host, SAMA5_SDMMC_BLKATTR_OFFSET);
+    regs->cmdarg    = sam_getreg(host, SAMA5_SDMMC_CMDARG_OFFSET);
+    regs->xferty    = sam_getreg(host, SAMA5_SDMMC_XFERTYP_OFFSET);
+    regs->cmdrsp0   = sam_getreg(host, SAMA5_SDMMC_CMDRSP0_OFFSET);
+    regs->cmdrsp1   = sam_getreg(host, SAMA5_SDMMC_CMDRSP1_OFFSET);
+    regs->cmdrsp2   = sam_getreg(host, SAMA5_SDMMC_CMDRSP2_OFFSET);
+    regs->cmdrsp3   = sam_getreg(host, SAMA5_SDMMC_CMDRSP3_OFFSET);
+    regs->prsstat   = sam_getreg(host, SAMA5_SDMMC_PRSSTAT_OFFSET);
+    regs->proctl    = sam_getreg(host, SAMA5_SDMMC_PROCTL_OFFSET);
+    regs->sysctl    = sam_getreg(host, SAMA5_SDMMC_SYSCTL_OFFSET);
+    regs->irqstat   = sam_getreg(host, SAMA5_SDMMC_IRQSTAT_OFFSET);
+    regs->irqstaten = sam_getreg(host, SAMA5_SDMMC_IRQSTATEN_OFFSET);
+    regs->irqsigen  = sam_getreg(host, SAMA5_SDMMC_IRQSIGEN_OFFSET);
+    regs->ac12err   = sam_getreg(host, SAMA5_SDMMC_AC12ERR_OFFSET);
+    regs->htcapblt0 = sam_getreg(host, SAMA5_SDMMC_HTCAPBLT0_OFFSET);
+    regs->htcapblt1 = sam_getreg(host, SAMA5_SDMMC_HTCAPBLT1_OFFSET);
+    regs->admaes    = sam_getreg(host, SAMA5_SDMMC_ADMAES_OFFSET);
+    regs->adsaddr   = sam_getreg(host, SAMA5_SDMMC_ADSADDR_OFFSET);
+}
+
+/****************************************************************************
+ * Name: sam_dumpsample
+ *
+ * Description:
+ *   Dump one register sample
+ *
+ ****************************************************************************/
+
+static void sam_dumpsample(struct sdhci_host *host,
+                             struct sam_sdmmcregs_s *regs, const char *msg)
+{
+  pr_info("SDMMC Registers: %s\n", msg);
+  pr_info("   DSADDR[%08x]: %08x\n",
+         SAMA5_SDMMC_DSADDR_OFFSET, regs->dsaddr);
+  pr_info("  BLKATTR[%08x]: %08x\n",
+         SAMA5_SDMMC_BLKATTR_OFFSET, regs->blkattr);
+  pr_info("   CMDARG[%08x]: %08x\n",
+         SAMA5_SDMMC_CMDARG_OFFSET, regs->cmdarg);
+  pr_info("   XFERTY[%08x]: %08x\n",
+         SAMA5_SDMMC_XFERTYP_OFFSET, regs->xferty);
+  pr_info("  CMDRSP0[%08x]: %08x\n",
+         SAMA5_SDMMC_CMDRSP0_OFFSET, regs->cmdrsp0);
+  pr_info("  CMDRSP1[%08x]: %08x\n",
+         SAMA5_SDMMC_CMDRSP1_OFFSET, regs->cmdrsp1);
+  pr_info("  CMDRSP2[%08x]: %08x\n",
+         SAMA5_SDMMC_CMDRSP2_OFFSET, regs->cmdrsp2);
+  pr_info("  CMDRSP3[%08x]: %08x\n",
+         SAMA5_SDMMC_CMDRSP3_OFFSET, regs->cmdrsp3);
+  pr_info("  PRSSTAT[%08x]: %08x\n",
+         SAMA5_SDMMC_PRSSTAT_OFFSET, regs->prsstat);
+  pr_info("   PROCTL[%08x]: %08x\n",
+         SAMA5_SDMMC_PROCTL_OFFSET, regs->proctl);
+  pr_info("   SYSCTL[%08x]: %08x\n",
+         SAMA5_SDMMC_SYSCTL_OFFSET, regs->sysctl);
+  pr_info("  IRQSTAT[%08x]: %08x\n",
+         SAMA5_SDMMC_IRQSTAT_OFFSET, regs->irqstat);
+  pr_info("IRQSTATEN[%08x]: %08x\n",
+         SAMA5_SDMMC_IRQSTATEN_OFFSET, regs->irqstaten);
+  pr_info(" IRQSIGEN[%08x]: %08x\n",
+         SAMA5_SDMMC_IRQSIGEN_OFFSET, regs->irqsigen);
+  pr_info("  AC12ERR[%08x]: %08x\n",
+         SAMA5_SDMMC_AC12ERR_OFFSET, regs->ac12err);
+  pr_info("HTCAPBLT0[%08x]: %08x\n",
+         SAMA5_SDMMC_HTCAPBLT0_OFFSET, regs->htcapblt0);
+  pr_info("HTCAPBLT1[%08x]: %08x\n",
+         SAMA5_SDMMC_HTCAPBLT1_OFFSET, regs->htcapblt1);
+  pr_info("   ADMAES[%08x]: %08x\n",
+         SAMA5_SDMMC_ADMAES_OFFSET, regs->admaes);
+  pr_info("  ADSADDR[%08x]: %08x\n",
+         SAMA5_SDMMC_ADSADDR_OFFSET, regs->adsaddr);
+}
+
+/****************************************************************************
+ * Name: sam_showregs
+ *
+ * Description:
+ *   Dump the current state of all registers
+ *
+ ****************************************************************************/
+
+static void sam_showregs(struct sdhci_host *host, const char *msg)
+{
+  struct sam_sdmmcregs_s regs;
+
+  sam_sdmmcsample(host, &regs);
+  sam_dumpsample(host, &regs, msg);
+}
+#endif
+

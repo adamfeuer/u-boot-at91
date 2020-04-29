@@ -2897,6 +2897,8 @@ int mmc_init(struct mmc *mmc)
 	if (err)
 		pr_info("%s: %d, time %lu\n", __func__, err, get_timer(start));
 
+	// af
+    mmc_go_idle(mmc);
 	return err;
 }
 

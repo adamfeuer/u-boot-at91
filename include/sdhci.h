@@ -492,4 +492,39 @@ extern const struct dm_mmc_ops sdhci_ops;
 #else
 #endif
 
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . */
+/* Register logging support */
+
+/* Register Offsets *****************************************************************/
+#ifdef CONFIG_SDIO_XFRDEBUG
+
+#define SAMA5_SDMMC_DSADDR_OFFSET        0x0000 /* DMA System Address Register */
+#define SAMA5_SDMMC_BLKATTR_OFFSET       0x0004 /* Block Attributes Register */
+#define SAMA5_SDMMC_CMDARG_OFFSET        0x0008 /* Command Argument Register */
+#define SAMA5_SDMMC_XFERTYP_OFFSET       0x000c /* Transfer Type Register SAMA5: Transfer Mode Register */
+#define SAMA5_SDMMC_CMDRSP0_OFFSET       0x0010 /* Command Response 0 */
+#define SAMA5_SDMMC_CMDRSP1_OFFSET       0x0014 /* Command Response 1 */
+#define SAMA5_SDMMC_CMDRSP2_OFFSET       0x0018 /* Command Response 2 */
+#define SAMA5_SDMMC_CMDRSP3_OFFSET       0x001c /* Command Response 3 */
+#define SAMA5_SDMMC_DATAPORT_OFFSET      0x0020 /* Buffer Data Port Register */
+#define SAMA5_SDMMC_PRSSTAT_OFFSET       0x0024 /* Present State Register */
+#define SAMA5_SDMMC_PROCTL_OFFSET        0x0028 /* Protocol Control Register */
+#define SAMA5_SDMMC_SYSCTL_OFFSET        0x002c /* System Control Register, or Clock Control Register/Timout Control Register */
+#define SAMA5_SDMMC_IRQSTAT_OFFSET       0x0030 /* Interrupt Status Register */
+#define SAMA5_SDMMC_IRQSTATEN_OFFSET     0x0034 /* Interrupt Status Enable Register */
+#define SAMA5_SDMMC_IRQSIGEN_OFFSET      0x0038 /* Interrupt Signal Enable Register */
+#define SAMA5_SDMMC_AC12ERR_OFFSET       0x003c /* Auto CMD12 Error Status Register */
+#define SAMA5_SDMMC_HTCAPBLT0_OFFSET     0x0040 /* Host Controller Capabilities Register 0 */
+#define SAMA5_SDMMC_HTCAPBLT1_OFFSET     0x0044 /* Host Controller Capabilities Register 1 */
+#define SAMA5_SDMMC_MIX_OFFSET           0x0048 /* Mixer Control Register SAMA5: Maximum Current Capabililities Register */
+#define SAMA5_SDMMC_FEVT_OFFSET          0x0050 /* Force Event Register */
+#define SAMA5_SDMMC_ADMAES_OFFSET        0x0054 /* ADMA Error Status Register */
+#define SAMA5_SDMMC_ADSADDR_OFFSET       0x0058 /* ADMA System Address Register */
+#define SAMA5_SDMMC_DLL_CONTROL_OFFSET   0x0060 /* DLL Control Register */
+#define SAMA5_SDMMC_DLL_STATUS_OFFSET    0x0064 /* DLL Status Register */
+#define SAMA5_SDMMC_CLK_TUNE_CTRL_OFFSET 0x0068 /* Clock tuning control Register */
+#define SAMA5_SDMMC_TC_OFFSET            0x00cc /* Tuning Control Register */
+
+#endif /* CONFIG_SDIO_XFRDEBUG */
+
 #endif /* __SDHCI_HW_H */

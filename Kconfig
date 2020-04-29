@@ -595,3 +595,10 @@ source "fs/Kconfig"
 source "lib/Kconfig"
 
 source "test/Kconfig"
+
+config SDIO_XFRDEBUG
+	bool "Enable SDIO transfer debugging"
+	default n
+	help
+	  Enable SDIO transfer debugging- print SDMMC registers. 
+
