@@ -57,8 +57,8 @@ struct sam_sdmmcregs_s
 };
 
 static void sam_showregs(struct sdhci_host *host, const char *msg);
-
 #endif
+
 
 static void sdhci_reset(struct sdhci_host *host, u8 mask)
 {
@@ -309,8 +309,10 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 
 	mask = SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT;
 
+#ifdef CONFIG_SDIO_XFRDEBUG
 	pr_info(":: sdhci_send_command: command: %d\n", cmd->cmdidx);
     sam_showregs(host, ":: sdhci_send_command: before send");
+#endif
 
 	/* We shouldn't wait for data inhibit for stop commands, even
 	   though they might use busy signaling */
@@ -457,8 +459,9 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 	struct sdhci_host *host = mmc->priv;
 	unsigned int div, clk = 0, timeout;
 
+#ifdef CONFIG_SDIO_XFRDEBUG
 	pr_info(":: set_clock: Entry\n");
-
+#endif
 	/* Wait max 20 ms */
 	timeout = 200;
 	while (sdhci_readl(host, SDHCI_PRESENT_STATE) &
@@ -486,7 +489,9 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		 * Check if the Host Controller supports Programmable Clock
 		 * Mode.
 		 */
+#ifdef CONFIG_SDIO_XFRDEBUG
         pr_info(":: set_clock: Programmable clock mode");
+#endif
 		if (host->clk_mul) {
 			for (div = 1; div <= 1024; div++) {
 				if ((host->max_clk / div) <= clock)
@@ -514,7 +519,9 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 			div >>= 1;
 		}
 	} else {
+#ifdef CONFIG_SDIO_XFRDEBUG
         pr_info(":: set_clock: Regular clock mode\n");
+#endif
 		/* Version 2.00 divisors must be a power of 2. */
 		for (div = 1; div < SDHCI_MAX_DIV_SPEC_200; div *= 2) {
 			if ((host->max_clk / div) <= clock)
@@ -554,9 +561,8 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 	}
 
 	clk |= SDHCI_CLOCK_CARD_EN;
-    pr_info(":: set_clock: sd clock enable\n");
-    puts("||| set_clock: sd clock enable\n");
 #ifdef CONFIG_SDIO_XFRDEBUG
+    pr_info(":: set_clock: sd clock enable\n");
     pr_info(":: set_clock: clock control reg: [%08x]: %08x\n", SDHCI_CLOCK_CONTROL, sdhci_readl(host, SDHCI_CLOCK_CONTROL));
     sam_showregs(host, "::> set_clock: enable before write");
 #endif
@@ -777,8 +783,9 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 #if CONFIG_IS_ENABLED(DM_MMC)
 	u64 dt_caps, dt_caps_mask;
 
+#ifdef CONFIG_SDIO_XFRDEBUG
     sam_showregs(host, "::sdhci_setup_cfg: before config");
-
+#endif
 	dt_caps_mask = dev_read_u64_default(host->mmc->dev,
 					    "sdhci-caps-mask", 0);
 	dt_caps = dev_read_u64_default(host->mmc->dev,
@@ -921,8 +928,9 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 
 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 
+#ifdef CONFIG_SDIO_XFRDEBUG
     sam_showregs(host, "::sdhci_setup_cfg: after config");
-
+#endif
 	return 0;
 }
 
@@ -956,7 +964,7 @@ int add_sdhci(struct sdhci_host *host, u32 f_max, u32 f_min)
 /* Register logging support */
 
 #ifdef CONFIG_SDIO_XFRDEBUG
-/****************************************************************************
+****************************************************************************
  * Name: sam_getreg
  *
  * Description:
@@ -1052,6 +1060,7 @@ static void sam_dumpsample(struct sdhci_host *host,
   pr_info("  ADSADDR[%08x]: %08x\n",
          SAMA5_SDMMC_ADSADDR_OFFSET, regs->adsaddr);
 }
+#endif
 
 /****************************************************************************
  * Name: sam_showregs
@@ -1061,8 +1070,10 @@ static void sam_dumpsample(struct sdhci_host *host,
  *
  ****************************************************************************/
 
+#ifdef SDIO_XFRDEBUG
 static void sam_showregs(struct sdhci_host *host, const char *msg)
 {
+
   struct sam_sdmmcregs_s regs;
 
   sam_sdmmcsample(host, &regs);

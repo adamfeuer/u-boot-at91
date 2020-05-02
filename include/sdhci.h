@@ -12,6 +12,7 @@
 #include <asm/io.h>
 #include <mmc.h>
 #include <asm/gpio.h>
+#include <time.h>
 
 /*
  * Controller registers
@@ -386,32 +387,76 @@ static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 
 #else
 
+static u32 last_val = 0;
+static int last_reg = 0;
+
 static inline void sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 {
+#ifdef SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    pr_info(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
+#endif
 	writel(val, host->ioaddr + reg);
 }
 
 static inline void sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 {
+#ifdef SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    pr_info(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
+#endif
 	writew(val, host->ioaddr + reg);
 }
 
 static inline void sdhci_writeb(struct sdhci_host *host, u8 val, int reg)
 {
+#ifdef SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    if (last_reg != reg || last_val != val ) {
+        pr_info(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, (unsigned int)host, reg, val);
+        last_reg = reg;
+        last_val = val;
+    }
+#endif
 	writeb(val, host->ioaddr + reg);
 }
 static inline u32 sdhci_readl(struct sdhci_host *host, int reg)
 {
+#ifdef SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    if (last_reg != reg || last_val != val ) {
+        pr_info(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, (unsigned int)host, reg, val);
+        last_reg = reg;
+        last_val = val;
+    }
+#endif
 	return readl(host->ioaddr + reg);
 }
 
 static inline u16 sdhci_readw(struct sdhci_host *host, int reg)
 {
+#ifdef SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    if (last_reg != reg || last_val != val ) {
+        pr_info(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, (unsigned int)host, reg, val);
+        last_reg = reg;
+        last_val = val;
+    }
+#endif
 	return readw(host->ioaddr + reg);
 }
 
 static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 {
+#ifdef SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    unsigned long timestamp = timer_get_us();
+    if (last_reg != reg || last_val != val ) {
+        pr_info(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, (unsigned int)host, reg, val);
+        last_reg = reg;
+        last_val = val;
+    }
+#endif
 	return readb(host->ioaddr + reg);
 }
 #endif

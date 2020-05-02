@@ -597,8 +597,15 @@ source "lib/Kconfig"
 source "test/Kconfig"
 
 config SDIO_XFRDEBUG
-	bool "Enable SDIO transfer debugging"
+bool "Enable SDIO transfer debugging"
+default n
+        help
+Enable SDIO transfer debugging- print SDMMC registers.
+
+config SDHCI_REGDEBUG
+	bool "Enable SHCI register debugging"
 	default n
 	help
-	  Enable SDIO transfer debugging- print SDMMC registers. 
+	  Enable SDHCI register debugging- print SDMMC reads and writes to
+	  SDMMC registers with timestamps.
 
