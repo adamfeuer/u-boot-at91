@@ -12,6 +12,7 @@
 #include <asm/io.h>
 #include <mmc.h>
 #include <asm/gpio.h>
+#include <time.h>
 
 /*
  * Controller registers
@@ -144,7 +145,23 @@
 
 #define SDHCI_ACMD12_ERR	0x3C
 
-/* 3E-3F reserved */
+#define SDHCI_HOST_CONTROL2	0x3E
+#define  SDHCI_CTRL_UHS_MASK	0x0007
+#define  SDHCI_CTRL_UHS_SDR12	0x0000
+#define  SDHCI_CTRL_UHS_SDR25	0x0001
+#define  SDHCI_CTRL_UHS_SDR50	0x0002
+#define  SDHCI_CTRL_UHS_SDR104	0x0003
+#define  SDHCI_CTRL_UHS_DDR50	0x0004
+#define  SDHCI_CTRL_HS400	0x0005 /* Non-standard */
+#define  SDHCI_CTRL_VDD_180	0x0008
+#define  SDHCI_CTRL_DRV_TYPE_MASK	0x0030
+#define  SDHCI_CTRL_DRV_TYPE_B	0x0000
+#define  SDHCI_CTRL_DRV_TYPE_A	0x0010
+#define  SDHCI_CTRL_DRV_TYPE_C	0x0020
+#define  SDHCI_CTRL_DRV_TYPE_D	0x0030
+#define  SDHCI_CTRL_EXEC_TUNING	0x0040
+#define  SDHCI_CTRL_TUNED_CLK	0x0080
+#define  SDHCI_CTRL_PRESET_VAL_ENABLE	0x8000
 
 #define SDHCI_CAPABILITIES	0x40
 #define  SDHCI_TIMEOUT_CLK_MASK	0x0000003F
@@ -186,6 +203,7 @@
 /* 55-57 reserved */
 
 #define SDHCI_ADMA_ADDRESS	0x58
+#define SDHCI_ADMA_ADDRESS_HI	0x5c
 
 /* 60-FB reserved */
 
@@ -246,12 +264,44 @@ struct sdhci_ops {
 #endif
 	int	(*get_cd)(struct sdhci_host *host);
 	void	(*set_control_reg)(struct sdhci_host *host);
-	void	(*set_ios_post)(struct sdhci_host *host);
+	int	(*set_ios_post)(struct sdhci_host *host);
 	void	(*set_clock)(struct sdhci_host *host, u32 div);
 	int (*platform_execute_tuning)(struct mmc *host, u8 opcode);
 	void (*set_delay)(struct sdhci_host *host);
 };
 
+#if CONFIG_IS_ENABLED(MMC_SDHCI_ADMA)
+#define ADMA_MAX_LEN	65532
+#ifdef CONFIG_DMA_ADDR_T_64BIT
+#define ADMA_DESC_LEN	16
+#else
+#define ADMA_DESC_LEN	8
+#endif
+#define ADMA_TABLE_NO_ENTRIES (CONFIG_SYS_MMC_MAX_BLK_COUNT * \
+			       MMC_MAX_BLOCK_LEN) / ADMA_MAX_LEN
+
+#define ADMA_TABLE_SZ (ADMA_TABLE_NO_ENTRIES * ADMA_DESC_LEN)
+
+/* Decriptor table defines */
+#define ADMA_DESC_ATTR_VALID		BIT(0)
+#define ADMA_DESC_ATTR_END		BIT(1)
+#define ADMA_DESC_ATTR_INT		BIT(2)
+#define ADMA_DESC_ATTR_ACT1		BIT(4)
+#define ADMA_DESC_ATTR_ACT2		BIT(5)
+
+#define ADMA_DESC_TRANSFER_DATA		ADMA_DESC_ATTR_ACT2
+#define ADMA_DESC_LINK_DESC	(ADMA_DESC_ATTR_ACT1 | ADMA_DESC_ATTR_ACT2)
+
+struct sdhci_adma_desc {
+	u8 attr;
+	u8 reserved;
+	u16 len;
+	u32 addr_lo;
+#ifdef CONFIG_DMA_ADDR_T_64BIT
+	u32 addr_hi;
+#endif
+} __packed;
+#endif
 struct sdhci_host {
 	const char *name;
 	void *ioaddr;
@@ -272,6 +322,17 @@ struct sdhci_host {
 	uint	voltages;
 
 	struct mmc_config cfg;
+	dma_addr_t start_addr;
+	int flags;
+#define USE_SDMA	(0x1 << 0)
+#define USE_ADMA	(0x1 << 1)
+#define USE_ADMA64	(0x1 << 2)
+#define USE_DMA		(USE_SDMA | USE_ADMA | USE_ADMA64)
+	dma_addr_t adma_addr;
+#if CONFIG_IS_ENABLED(MMC_SDHCI_ADMA)
+	struct sdhci_adma_desc *adma_desc_table;
+	uint desc_slot;
+#endif
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS
@@ -326,32 +387,80 @@ static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 
 #else
 
+static int last_reg = 0;
+static u32 last_val = 0;
+
 static inline void sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 {
+#ifdef CONFIG_SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    if ( (reg != last_reg) || (val != last_val) ) {
+        pr_cust(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
+        last_reg = reg;
+        last_val = (u32) val;
+    }
+#endif
 	writel(val, host->ioaddr + reg);
 }
 
 static inline void sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 {
+#ifdef CONFIG_SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    if ( (reg != last_reg) || (val != last_val) ) {
+        pr_cust(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
+        last_reg = reg;
+        last_val = (u32) val;
+    }
+#endif
 	writew(val, host->ioaddr + reg);
 }
 
 static inline void sdhci_writeb(struct sdhci_host *host, u8 val, int reg)
 {
+#ifdef CONFIG_SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    if ( (reg != last_reg) || (val != last_val) ) {
+        pr_cust(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
+        last_reg = reg;
+        last_val = (u32) val;
+    }
+#endif
 	writeb(val, host->ioaddr + reg);
 }
 static inline u32 sdhci_readl(struct sdhci_host *host, int reg)
 {
+#ifdef CONFIG_SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    if (reg != last_reg) {
+        pr_cust(":::register_log,read,%ld,%08x,%08x,\n",timestamp, (unsigned int)host, reg);
+        last_reg = reg;
+    }
+#endif
 	return readl(host->ioaddr + reg);
 }
 
 static inline u16 sdhci_readw(struct sdhci_host *host, int reg)
 {
+#ifdef CONFIG_SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    if (reg != last_reg) {
+        pr_cust(":::register_log,read,%ld,%08x,%08x,\n",timestamp, (unsigned int)host, reg);
+        last_reg = reg;
+    }
+#endif
 	return readw(host->ioaddr + reg);
 }
 
 static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 {
+#ifdef CONFIG_SDHCI_REGDEBUG
+    unsigned long timestamp = timer_get_us();
+    if (reg != last_reg) {
+        pr_cust(":::register_log,read,%ld,%08x,%08x,\n",timestamp, (unsigned int)host, reg);
+        last_reg = reg;
+    }
+#endif
 	return readb(host->ioaddr + reg);
 }
 #endif
@@ -423,11 +532,48 @@ int sdhci_bind(struct udevice *dev, struct mmc *mmc, struct mmc_config *cfg);
 int add_sdhci(struct sdhci_host *host, u32 f_max, u32 f_min);
 #endif /* !CONFIG_BLK */
 
+void sdhci_set_uhs_timing(struct sdhci_host *host);
 #ifdef CONFIG_DM_MMC
 /* Export the operations to drivers */
 int sdhci_probe(struct udevice *dev);
+static int sdhci_set_clock(struct mmc *mmc, unsigned int clock);
 extern const struct dm_mmc_ops sdhci_ops;
 #else
 #endif
+
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . */
+/* Register logging support */
+
+/* Register Offsets *****************************************************************/
+#ifdef CONFIG_SDIO_XFRDEBUG
+
+#define SAMA5_SDMMC_DSADDR_OFFSET        0x0000 /* DMA System Address Register */
+#define SAMA5_SDMMC_BLKATTR_OFFSET       0x0004 /* Block Attributes Register */
+#define SAMA5_SDMMC_CMDARG_OFFSET        0x0008 /* Command Argument Register */
+#define SAMA5_SDMMC_XFERTYP_OFFSET       0x000c /* Transfer Type Register SAMA5: Transfer Mode Register */
+#define SAMA5_SDMMC_CMDRSP0_OFFSET       0x0010 /* Command Response 0 */
+#define SAMA5_SDMMC_CMDRSP1_OFFSET       0x0014 /* Command Response 1 */
+#define SAMA5_SDMMC_CMDRSP2_OFFSET       0x0018 /* Command Response 2 */
+#define SAMA5_SDMMC_CMDRSP3_OFFSET       0x001c /* Command Response 3 */
+#define SAMA5_SDMMC_DATAPORT_OFFSET      0x0020 /* Buffer Data Port Register */
+#define SAMA5_SDMMC_PRSSTAT_OFFSET       0x0024 /* Present State Register */
+#define SAMA5_SDMMC_PROCTL_OFFSET        0x0028 /* Protocol Control Register */
+#define SAMA5_SDMMC_SYSCTL_OFFSET        0x002c /* System Control Register, or Clock Control Register/Timout Control Register */
+#define SAMA5_SDMMC_IRQSTAT_OFFSET       0x0030 /* Interrupt Status Register */
+#define SAMA5_SDMMC_IRQSTATEN_OFFSET     0x0034 /* Interrupt Status Enable Register */
+#define SAMA5_SDMMC_IRQSIGEN_OFFSET      0x0038 /* Interrupt Signal Enable Register */
+#define SAMA5_SDMMC_AC12ERR_OFFSET       0x003c /* Auto CMD12 Error Status Register */
+#define SAMA5_SDMMC_HTCAPBLT0_OFFSET     0x0040 /* Host Controller Capabilities Register 0 */
+#define SAMA5_SDMMC_HTCAPBLT1_OFFSET     0x0044 /* Host Controller Capabilities Register 1 */
+#define SAMA5_SDMMC_MIX_OFFSET           0x0048 /* Mixer Control Register SAMA5: Maximum Current Capabililities Register */
+#define SAMA5_SDMMC_FEVT_OFFSET          0x0050 /* Force Event Register */
+#define SAMA5_SDMMC_ADMAES_OFFSET        0x0054 /* ADMA Error Status Register */
+#define SAMA5_SDMMC_ADSADDR_OFFSET       0x0058 /* ADMA System Address Register */
+#define SAMA5_SDMMC_DLL_CONTROL_OFFSET   0x0060 /* DLL Control Register */
+#define SAMA5_SDMMC_DLL_STATUS_OFFSET    0x0064 /* DLL Status Register */
+#define SAMA5_SDMMC_CLK_TUNE_CTRL_OFFSET 0x0068 /* Clock tuning control Register */
+#define SAMA5_SDMMC_TC_OFFSET            0x00cc /* Tuning Control Register */
+
+#endif /* CONFIG_SDIO_XFRDEBUG */
 
 #endif /* __SDHCI_HW_H */

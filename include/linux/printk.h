@@ -52,6 +52,8 @@
 	__printk(5, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_info(fmt, ...) \
 	__printk(6, pr_fmt(fmt), ##__VA_ARGS__)
+#define pr_cust(fmt, ...) \
+	__printk(1, pr_fmt(fmt), ##__VA_ARGS__)
 
 #define pr_cont(fmt, ...) \
 	printk(fmt, ##__VA_ARGS__)
