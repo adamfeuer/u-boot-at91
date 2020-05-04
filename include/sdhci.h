@@ -395,7 +395,7 @@ static inline void sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 #ifdef CONFIG_SDHCI_REGDEBUG
     unsigned long timestamp = timer_get_us();
     if ( (reg != last_reg) || (val != last_val) ) {
-        pr_cust(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
+        pr_cust(":::register_log,write,4,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
         last_reg = reg;
         last_val = (u32) val;
     }
@@ -408,7 +408,7 @@ static inline void sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 #ifdef CONFIG_SDHCI_REGDEBUG
     unsigned long timestamp = timer_get_us();
     if ( (reg != last_reg) || (val != last_val) ) {
-        pr_cust(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
+        pr_cust(":::register_log,write,2,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
         last_reg = reg;
         last_val = (u32) val;
     }
@@ -421,7 +421,7 @@ static inline void sdhci_writeb(struct sdhci_host *host, u8 val, int reg)
 #ifdef CONFIG_SDHCI_REGDEBUG
     unsigned long timestamp = timer_get_us();
     if ( (reg != last_reg) || (val != last_val) ) {
-        pr_cust(":::register_log,write,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
+        pr_cust(":::register_log,write,1,%ld,%08x,%08x,%08x\n",timestamp, host, reg, val);
         last_reg = reg;
         last_val = (u32) val;
     }
@@ -430,38 +430,41 @@ static inline void sdhci_writeb(struct sdhci_host *host, u8 val, int reg)
 }
 static inline u32 sdhci_readl(struct sdhci_host *host, int reg)
 {
+    u32 result = readl(host->ioaddr + reg);
 #ifdef CONFIG_SDHCI_REGDEBUG
     unsigned long timestamp = timer_get_us();
     if (reg != last_reg) {
-        pr_cust(":::register_log,read,%ld,%08x,%08x,\n",timestamp, (unsigned int)host, reg);
+        pr_cust(":::register_log,read,4,%ld,%08x,%08x,%08x\n",timestamp, (unsigned int)host, reg, result);
         last_reg = reg;
     }
 #endif
-	return readl(host->ioaddr + reg);
+    return result;
 }
 
 static inline u16 sdhci_readw(struct sdhci_host *host, int reg)
 {
+	u16 result = readw(host->ioaddr + reg);
 #ifdef CONFIG_SDHCI_REGDEBUG
     unsigned long timestamp = timer_get_us();
     if (reg != last_reg) {
-        pr_cust(":::register_log,read,%ld,%08x,%08x,\n",timestamp, (unsigned int)host, reg);
+        pr_cust(":::register_log,read,2,%ld,%08x,%08x,%08x\n",timestamp, (unsigned int)host, reg, result);
         last_reg = reg;
     }
 #endif
-	return readw(host->ioaddr + reg);
+    return result;
 }
 
 static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
 {
+	u8 result = readb(host->ioaddr + reg);
 #ifdef CONFIG_SDHCI_REGDEBUG
     unsigned long timestamp = timer_get_us();
     if (reg != last_reg) {
-        pr_cust(":::register_log,read,%ld,%08x,%08x,\n",timestamp, (unsigned int)host, reg);
+        pr_cust(":::register_log,read,1,%ld,%08x,%08x,%08x\n",timestamp, (unsigned int)host, reg, result);
         last_reg = reg;
     }
 #endif
-	return readb(host->ioaddr + reg);
+    return result;
 }
 #endif
 
