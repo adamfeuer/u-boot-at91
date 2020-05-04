@@ -51,28 +51,42 @@ registers = {
         0x0220: ["TUNCR", "Tuning Control Register"],
         0x0230: ["CACR", "Capabilities Control Register"],
         0x0240: ["CALCR", "Calibration Control Register"],
+
+        # Atmel
+        0x0006: ["BCR", "Block Count Register"],
+        0x000e: ["CR", "Command Register"],
+        0x0013: ["RR0", "Response Register 0 (upper byte)"],
+        0x0017: ["RR1", "Response Register 1 (upper byte)"],
+        0x001b: ["RR3", "Response Register 3 (upper byte)"],
+        0x0029: ["PCR", "Power Control Register"],
+        0x002e: ["TCR", "Timeout Control Register"],
+        0x002f: ["SRR", "Software Reset Register"],
 }
 
 
 def main():
     parser = argparse.ArgumentParser(description='Parse SDMMC register logs and format them')
     parser.add_argument('--verbose', action="store_true", default=False)
+    parser.add_argument('--description', action="store_true", default=False)
+    parser.add_argument('--header', action="store_true", default=False)
     parser.add_argument('file', action="store")
     args = parser.parse_args()
-    for offset, value in registers.items():
-        reg_name, reg_description = value
-        print(f"{offset}: {reg_name} ({reg_description})")
-    print(args.file)
+    if args.header:
+        print("index   usecs  op (bytes) register               value         value binary                             register long description")
+    start_timestamp = -1
     with open(args.file) as csvfile:
         register_log_reader = csv.reader(csvfile, delimiter=',')
-        for row in register_log_reader:
+        for index, row in enumerate(register_log_reader):
             # print(row)
-            operation, timestamp, register_hex, value_hex = row
+            prefix, operation, bytes_hex, timestamp_dec, register_address, register_hex, value_hex = row
             if operation == "write":
                 op = 'w'
             else:
-                op = 'r'
-            timestamp_microseconds = int(timestamp)
+                op = ' '
+            timestamp = int(timestamp_dec)
+            if start_timestamp < 0:
+                start_timestamp = timestamp
+            bytes = int(bytes_hex)
             register = int(register_hex, 16)
             if value_hex:
                 value = int(value_hex, 16)
@@ -82,11 +96,16 @@ def main():
             else:
                 reg_name = "UNKNOWN"
                 reg_description = "Unknown register"
-            print(f"{operation: >5}: [{register:#06x}:{reg_name: >12}] ", end='')
+            display_timestamp = timestamp - start_timestamp
+            print(f"{index:3d} {display_timestamp:10d} {operation: >5} ({bytes}): [{register:#06x}:{reg_name: >12}]{op} ", end='')
             if value_hex:
                 vb = f'{value:>032b}'
                 value_binary = f'{vb[0:4]} {vb[4:8]} {vb[8:12]} {vb[12:16]} {vb[16:20]} {vb[20:24]} {vb[24:28]} {vb[28:32]}'
                 print(f"{value:#010x}    {value_binary}", end='')
+            else:
+                print("                                                     ", end='')
+            if args.description:
+                print(f"  {reg_description}", end='')
 
             print()
 
