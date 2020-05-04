@@ -9,6 +9,9 @@ import argparse
 NAME = 0
 DESCRIPTION = 1
 
+READ = 0
+WRITE = 1
+
 registers = {
         0x0000: ["DSADDR", "DMA System Address Register"],
         0x0004: ["BLKATTR", "Block Attributes Register"],
@@ -66,37 +69,47 @@ registers = {
 
 def main():
     parser = argparse.ArgumentParser(description='Parse SDMMC register logs and format them')
-    parser.add_argument('--verbose', action="store_true", default=False)
-    parser.add_argument('--description', action="store_true", default=False)
-    parser.add_argument('--header', action="store_true", default=False)
+    parser.add_argument('--description', action="store_true", default=False, help="Print register long descriptions")
+    parser.add_argument('--header', action="store_true", default=False, help="Print header line")
+    parser.add_argument('--c-format', action="store_true", default=False, help="Output C-language data structure")
     parser.add_argument('file', action="store")
     args = parser.parse_args()
     if args.header:
         print("index   usecs  op (bytes) register               value         value binary                             register long description")
     start_timestamp = -1
+    rows = []
     with open(args.file) as csvfile:
         register_log_reader = csv.reader(csvfile, delimiter=',')
-        for index, row in enumerate(register_log_reader):
-            # print(row)
-            prefix, operation, bytes_hex, timestamp_dec, register_address, register_hex, value_hex = row
-            if operation == "write":
-                op = 'w'
-            else:
-                op = ' '
-            timestamp = int(timestamp_dec)
-            if start_timestamp < 0:
-                start_timestamp = timestamp
-            bytes = int(bytes_hex)
-            register = int(register_hex, 16)
-            if value_hex:
-                value = int(value_hex, 16)
-            if register in registers:
-                reg_name = registers[register][NAME]
-                reg_description = registers[register][DESCRIPTION]
-            else:
-                reg_name = "UNKNOWN"
-                reg_description = "Unknown register"
-            display_timestamp = timestamp - start_timestamp
+        for row in register_log_reader:
+            rows.append(row)
+    if args.c_format:
+        print(f"register_log[{len(rows)}][5] = {{")
+    for index, row in enumerate(rows):
+        # print(row)
+        prefix, operation, bytes_hex, timestamp_dec, register_address, register_hex, value_hex = row
+        if operation == "write":
+            op = 'w'
+            opcode = WRITE
+        else:
+            op = ' '
+            opcode = READ
+        timestamp = int(timestamp_dec)
+        if start_timestamp < 0:
+            start_timestamp = timestamp
+        bytes = int(bytes_hex)
+        register = int(register_hex, 16)
+        if value_hex:
+            value = int(value_hex, 16)
+        if register in registers:
+            reg_name = registers[register][NAME]
+            reg_description = registers[register][DESCRIPTION]
+        else:
+            reg_name = "UNKNOWN"
+            reg_description = "Unknown register"
+        display_timestamp = timestamp - start_timestamp
+        if args.c_format:
+            print(f"{display_timestamp:10d}, {opcode}, {bytes}, {register:#06x}, {value:#010x},")
+        else:
             print(f"{index:3d} {display_timestamp:10d} {operation: >5} ({bytes}): [{register:#06x}:{reg_name: >12}]{op} ", end='')
             if value_hex:
                 vb = f'{value:>032b}'
@@ -106,8 +119,9 @@ def main():
                 print("                                                     ", end='')
             if args.description:
                 print(f"  {reg_description}", end='')
-
             print()
+    if args.c_format:
+        print("}")
 
 
 if __name__ == "__main__":
