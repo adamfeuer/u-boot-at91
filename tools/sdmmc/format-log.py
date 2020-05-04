@@ -83,6 +83,8 @@ def main():
         for row in register_log_reader:
             rows.append(row)
     if args.c_format:
+        print("/* register log format: usecs, read/write, bytes, register, value */")
+        print(f"int REGISTER_LOG_LENGTH = {len(rows)};")
         print(f"register_log[{len(rows)}][5] = {{")
     for index, row in enumerate(rows):
         # print(row)
@@ -108,7 +110,7 @@ def main():
             reg_description = "Unknown register"
         display_timestamp = timestamp - start_timestamp
         if args.c_format:
-            print(f"{display_timestamp:10d}, {opcode}, {bytes}, {register:#06x}, {value:#010x},")
+            print(f"{display_timestamp:10d}, {opcode}, {bytes}, {register:#06x}, {value:#010x},  /* {reg_name} - {reg_description}  */ ")
         else:
             print(f"{index:3d} {display_timestamp:10d} {operation: >5} ({bytes}): [{register:#06x}:{reg_name: >12}]{op} ", end='')
             if value_hex:
