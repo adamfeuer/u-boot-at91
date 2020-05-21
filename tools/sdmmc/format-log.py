@@ -110,7 +110,7 @@ def main():
             reg_description = "Unknown register"
         display_timestamp = timestamp - start_timestamp
         if args.c_format:
-            print(f"{display_timestamp:10d}, {opcode}, {bytes}, {register:#06x}, {value:#010x},  /* {reg_name} - {reg_description}  */ ")
+            print(f"    {{ {display_timestamp:10d}, {opcode}, {bytes}, {register:#06x}, {value:#010x} }},  /* {reg_name} - {reg_description}  */")
         else:
             print(f"{index:3d} {display_timestamp:10d} {operation: >5} ({bytes}): [{register:#06x}:{reg_name: >12}]{op} ", end='')
             if value_hex:

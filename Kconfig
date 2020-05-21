@@ -603,9 +603,16 @@ config SDIO_XFRDEBUG
       Enable SDIO transfer debugging- print SDMMC registers.
 
 config SDHCI_REGDEBUG
-	bool "Enable SHCI register debugging"
+bool "Enable SHCI register debugging"
+default n
+        help
+Enable SDHCI register debugging- print SDMMC reads and writes to
+        SDMMC registers with timestamps.
+
+config SDHCI_PIO_DEBUG
+	bool "Enable SHCI PIO debugging"
 	default n
 	help
-	  Enable SDHCI register debugging- print SDMMC reads and writes to
-	  SDMMC registers with timestamps.
+	  Enable SDHCI PIO debugging- print SDMMC PIO configuration register
+	  writes.
 

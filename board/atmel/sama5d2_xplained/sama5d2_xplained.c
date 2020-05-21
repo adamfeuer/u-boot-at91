@@ -63,6 +63,7 @@ int board_early_init_f(void)
 
 int board_init(void)
 {
+    pr_cust(":::board_init\n");
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
 

@@ -59,7 +59,15 @@ static int atmel_pio4_config_io_func(u32 port, u32 pin,
 	reg = func;
 	reg |= config;
 
-	writel(mask, &port_base->mskr);
+#ifdef CONFIG_SDHCI_PIO_DEBUG
+    pr_cust(":::atmel_pio4_config_io,%08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",port, pin, func, config, port_base->mskr, mask, port_base->cfgr, reg);
+#define PINMUX_PIN(no, func, ioset) \
+(((no) & 0xffff) | (((func) & 0xf) << 16) | (((ioset) & 0xff) << 20))
+#define PIN_PA18			18
+#define PIN_PA18__SDMMC1_DAT0		PINMUX_PIN(PIN_PA18, 5, 1)
+    pr_cust(":::atmel_pio4_config_io: PIN_PA18__SDMMC1_DAT0: %08x\n", PIN_PA18__SDMMC1_DAT0);
+#endif
+    writel(mask, &port_base->mskr);
 	writel(reg, &port_base->cfgr);
 
 	return 0;
@@ -191,6 +199,7 @@ static struct atmel_pio4_port *atmel_pio4_bank_base(struct udevice *dev,
 
 static int atmel_pio4_direction_input(struct udevice *dev, unsigned offset)
 {
+    pr_cust(":::atmel_pio4_direction_input, dev: %08x offset: %08x\n", (u32) dev, offset);
 	u32 bank = ATMEL_PIO_BANK(offset);
 	u32 line = ATMEL_PIO_LINE(offset);
 	struct atmel_pio4_port *port_base = atmel_pio4_bank_base(dev, bank);
@@ -207,6 +216,7 @@ static int atmel_pio4_direction_input(struct udevice *dev, unsigned offset)
 static int atmel_pio4_direction_output(struct udevice *dev,
 				       unsigned offset, int value)
 {
+    pr_cust(":::atmel_pio4_direction_output, dev: %08x offset: %08x\n", (u32) dev, offset);
 	u32 bank = ATMEL_PIO_BANK(offset);
 	u32 line = ATMEL_PIO_LINE(offset);
 	struct atmel_pio4_port *port_base = atmel_pio4_bank_base(dev, bank);
@@ -227,6 +237,7 @@ static int atmel_pio4_direction_output(struct udevice *dev,
 
 static int atmel_pio4_get_value(struct udevice *dev, unsigned offset)
 {
+    pr_cust(":::atmel_pio4_get_value, dev: %08x offset: %08x\n", (u32) dev, offset);
 	u32 bank = ATMEL_PIO_BANK(offset);
 	u32 line = ATMEL_PIO_LINE(offset);
 	struct atmel_pio4_port *port_base = atmel_pio4_bank_base(dev, bank);
@@ -238,21 +249,29 @@ static int atmel_pio4_get_value(struct udevice *dev, unsigned offset)
 static int atmel_pio4_set_value(struct udevice *dev,
 				unsigned offset, int value)
 {
+    pr_cust(":::atmel_pio4_set_value, dev: %08x offset: %08x value:%08x\n", (u32) dev, offset, value);
 	u32 bank = ATMEL_PIO_BANK(offset);
 	u32 line = ATMEL_PIO_LINE(offset);
 	struct atmel_pio4_port *port_base = atmel_pio4_bank_base(dev, bank);
 	u32 mask = BIT(line);
 
 	if (value)
+	{
+        pr_cust(":::atmel_pio4_set_value:sodr, port_base: %08x line: %08x mask: %08x\n", (u32) port_base, line, mask);
 		writel(mask, &port_base->sodr);
+	}
 	else
+	{
+        pr_cust(":::atmel_pio4_set_value:codr, port_base: %08x line: %08x mask: %08x\n", (u32) port_base, line, mask);
 		writel(mask, &port_base->codr);
+	}
 
 	return 0;
 }
 
 static int atmel_pio4_get_function(struct udevice *dev, unsigned offset)
 {
+    pr_cust(":::atmel_pio4_get_function\n");
 	u32 bank = ATMEL_PIO_BANK(offset);
 	u32 line = ATMEL_PIO_LINE(offset);
 	struct atmel_pio4_port *port_base = atmel_pio4_bank_base(dev, bank);

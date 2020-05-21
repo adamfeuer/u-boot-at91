@@ -153,6 +153,7 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	int mmc_dev = mmc_get_blk_desc(mmc)->devnum;
 	ulong start = get_timer(0);
 
+    pr_cust("\n::sdhci_send_command,%d,%08x,%d\n", cmd->cmdidx, cmd->cmdarg, cmd->resp_type);
 	/* Timeout unit - ms */
 	static unsigned int cmd_timeout = SDHCI_CMD_DEFAULT_TIMEOUT;
 
@@ -326,11 +327,20 @@ static int sdhci_execute_tuning(struct udevice *dev, uint opcode)
 	return 0;
 }
 #endif
+
+static int set_clock_counter = -1;
+
 static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 {
 	struct sdhci_host *host = mmc->priv;
 	unsigned int div, clk = 0, timeout;
 
+	set_clock_counter++;
+//    pr_cust("\n:::sdhci_set_clock:%d host: %08x name: %s\n", set_clock_counter, host, host->name);
+//    pr_cust("\n:::sdhci_set_clock:%d\n", clock);
+//    pr_cust(":::sdhci_set_clock 1- pausing\n");
+//    udelay(3*1000*1000);
+//    pr_cust(":::sdhci_set_clock 1- continuing\n");
 	/* Wait max 20 ms */
 	timeout = 200;
 	while (sdhci_readl(host, SDHCI_PRESENT_STATE) &
@@ -345,9 +355,16 @@ static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		udelay(100);
 	}
 
-	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
+    if (set_clock_counter == 2) {
+        pr_cust(":::sdhci_set_clock middle 1 - host: %08x\n", host);
+        pr_cust(":::sdhci_set_clock middle 1 - pausing\n");
+        udelay(3*1000*1000);
+        pr_cust(":::sdhci_set_clock middle 1 - continuing\n");
+    }
 
-	if (clock == 0)
+    sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
+
+    if (clock == 0)
 		return 0;
 
 	if (host->ops && host->ops->set_delay)
@@ -414,10 +431,26 @@ static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		timeout--;
 		udelay(1000);
 	}
-
 	clk |= SDHCI_CLOCK_CARD_EN;
-	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
-	return 0;
+
+    if (set_clock_counter == 2) {
+        pr_cust(":::sdhci_set_clock middle 2 - host: %08x\n", host);
+        pr_cust(":::sdhci_set_clock middle 2 - pausing\n");
+        udelay(3*1000*1000);
+        pr_cust(":::sdhci_set_clock middle 2 - continuing\n");
+    }
+
+    sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+    pr_cust(":::register_log,write,2,%08x,%08x,%08x\n",host->ioaddr + SDHCI_CLOCK_CONTROL, SDHCI_CLOCK_CONTROL, clk);
+
+    if (set_clock_counter == 2) {
+        pr_cust(":::sdhci_set_clock final - host: %08x\n", host);
+        pr_cust(":::sdhci_set_clock final - pausing\n");
+        udelay(5*1000*1000);
+        pr_cust(":::sdhci_set_clock final - continuing\n");
+	}
+
+    return 0;
 }
 
 static void sdhci_set_power(struct sdhci_host *host, unsigned short power)
@@ -461,11 +494,18 @@ static int sdhci_set_ios(struct mmc *mmc)
 	u32 ctrl;
 	struct sdhci_host *host = mmc->priv;
 
+    pr_cust(":::sdhci_set_ios: host: %08x\n", host);
+    pr_cust(":::sdhci_set_ios 1- pausing\n");
+    udelay(3*1000*1000);
+    pr_cust(":::sdhci_set_ios 1- continuing\n");
+
 	if (host->ops && host->ops->set_control_reg)
 		host->ops->set_control_reg(host);
 
-	if (mmc->clock != host->clock)
-		sdhci_set_clock(mmc, mmc->clock);
+	if (mmc->clock != host->clock) {
+        pr_cust(":::sdhci_set_ios: set_clock: %08x\n", mmc->clock);
+        sdhci_set_clock(mmc, mmc->clock);
+	}
 
 	if (mmc->clk_disable)
 		sdhci_set_clock(mmc, 0);
@@ -496,8 +536,12 @@ static int sdhci_set_ios(struct mmc *mmc)
 	    (host->quirks & SDHCI_QUIRK_BROKEN_HISPD_MODE))
 		ctrl &= ~SDHCI_CTRL_HISPD;
 
-	sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
+    pr_cust(":::sdhci_set_ios: ctrl: %08x\n", ctrl);
+    sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
 
+//    pr_cust(":::sdhci_set_ios 2- pausing\n");
+//    udelay(3*1000*1000);
+//    pr_cust(":::sdhci_set_ios 2- continuing\n");
 	/* If available, call the driver specific "post" set_ios() function */
 	if (host->ops && host->ops->set_ios_post)
 		host->ops->set_ios_post(host);
@@ -509,6 +553,10 @@ static int sdhci_init(struct mmc *mmc)
 {
 	struct sdhci_host *host = mmc->priv;
 
+    pr_cust(":::sdhci_init: host: %08x\n", host);
+    pr_cust(":::sdhci_init 1- pausing\n");
+    udelay(3*1000*1000);
+    pr_cust(":::sdhci_init 1- continuing\n");
 	sdhci_reset(host, SDHCI_RESET_ALL);
 
 	if ((host->quirks & SDHCI_QUIRK_32BIT_DMA_ADDR) && !aligned_buffer) {
@@ -520,6 +568,9 @@ static int sdhci_init(struct mmc *mmc)
 		}
 	}
 
+//    pr_cust(":::sdhci_init 2- pausing\n");
+//    udelay(5*1000*1000);
+//    pr_cust(":::sdhci_init 2- continuing\n");
 	sdhci_set_power(host, fls(mmc->cfg->voltages) - 1);
 
 	if (host->ops && host->ops->get_cd)
@@ -531,6 +582,9 @@ static int sdhci_init(struct mmc *mmc)
 	/* Mask all sdhci interrupt sources */
 	sdhci_writel(host, 0x0, SDHCI_SIGNAL_ENABLE);
 
+//    pr_cust(":::sdhci_init 3- pausing\n");
+//    udelay(3*1000*1000);
+//    pr_cust(":::sdhci_init 3- continuing\n");
 	return 0;
 }
 
@@ -562,6 +616,10 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 {
 	u32 caps, caps_1 = 0;
 
+    pr_cust(":::sdhci_setup_cfg\n");
+//    pr_cust(":::sdhci_setup_cfg- pausing\n");
+//    udelay(3*1000*1000);
+//    pr_cust(":::sdhci_setup_cfg- continuing\n");
 	caps = sdhci_readl(host, SDHCI_CAPABILITIES);
 
 #ifdef CONFIG_MMC_SDHCI_SDMA
@@ -682,8 +740,10 @@ int sdhci_bind(struct udevice *dev, struct mmc *mmc, struct mmc_config *cfg)
 }
 #else
 int add_sdhci(struct sdhci_host *host, u32 f_max, u32 f_min)
+        // TODO: log these params
 {
 	int ret;
+    pr_cust(":::sdhci_host \n");
 
 	ret = sdhci_setup_cfg(&host->cfg, host, f_max, f_min);
 	if (ret)

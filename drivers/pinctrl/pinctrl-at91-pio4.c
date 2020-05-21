@@ -106,6 +106,7 @@ static inline struct atmel_pio4_port *atmel_pio4_bank_base(struct udevice *dev,
 
 static int atmel_pinctrl_set_state(struct udevice *dev, struct udevice *config)
 {
+    pr_cust(":::atmel_pinctrl_set_state\n");
 	struct atmel_pio4_port *bank_base;
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(config);
@@ -129,6 +130,14 @@ static int atmel_pinctrl_set_state(struct udevice *dev, struct udevice *config)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_SDHCI_PIO_DEBUG
+    #define PINMUX_PIN(no, func, ioset) \
+(((no) & 0xffff) | (((func) & 0xf) << 16) | (((ioset) & 0xff) << 20))
+#define PIN_PA18			18
+#define PIN_PA18__SDMMC1_DAT0		PINMUX_PIN(PIN_PA18, 5, 1)
+    pr_cust(":::atmel_pinctrl_set_state, dev: %08x config: %08x line:%08x func:%08x\n", (u32) dev, config, line, func);
+    pr_cust(":::atmel_pinctrl_set_state: PIN_PA18__SDMMC1_DAT0: %08x\n", PIN_PA18__SDMMC1_DAT0);
+#endif
 	for (i = 0 ; i < count; i++) {
 		offset = ATMEL_GET_PIN_NO(cells[i]);
 		func = ATMEL_GET_PIN_FUNC(cells[i]);
@@ -139,9 +148,14 @@ static int atmel_pinctrl_set_state(struct udevice *dev, struct udevice *config)
 		bank_base = atmel_pio4_bank_base(dev, bank);
 
 		writel(BIT(line), &bank_base->mskr);
+        pr_cust(":::atmel_pinctrl_set_state, mskr: %08x conf: %08x\n", &bank_base->mskr, BIT(line));
 		conf &= (~ATMEL_PIO_CFGR_FUNC_MASK);
 		conf |= (func & ATMEL_PIO_CFGR_FUNC_MASK);
 		writel(conf, &bank_base->cfgr);
+#ifdef CONFIG_SDHCI_PIO_DEBUG
+        pr_cust(":::atmel_pinctrl_set_state, cfgr: %08x conf: %08x\n", &bank_base->cfgr, conf);
+//        pr_cust(":::atmel_pinctrl_set_state, i:%d cells[i]: %08x func: %08x bank: %08x line:%08x conf:%08x\n", i, cells[i], func, bank, line, conf);
+#endif
 	}
 
 	return 0;
@@ -156,6 +170,7 @@ static int atmel_pinctrl_probe(struct udevice *dev)
 	struct atmel_pio4_platdata *plat = dev_get_platdata(dev);
 	fdt_addr_t addr_base;
 
+    pr_cust(":::atmel_pinctrl_probe\n");
 	dev = dev_get_parent(dev);
 	addr_base = devfdt_get_addr(dev);
 	if (addr_base == FDT_ADDR_T_NONE)

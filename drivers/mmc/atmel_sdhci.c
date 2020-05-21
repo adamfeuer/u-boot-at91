@@ -89,6 +89,7 @@ static int atmel_sdhci_probe(struct udevice *dev)
 
 	host->max_clk = max_clk;
 
+	pr_cust("::atmel_sdhci_probe: max_clk: %08x ATMEL_SDHC_MIN_FREQ: %08x", max_clk, ATMEL_SDHC_MIN_FREQ);
 	ret = sdhci_setup_cfg(&plat->cfg, host, 0, ATMEL_SDHC_MIN_FREQ);
 	if (ret)
 		return ret;
