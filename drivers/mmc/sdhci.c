@@ -336,11 +336,6 @@ static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 	unsigned int div, clk = 0, timeout;
 
 	set_clock_counter++;
-//    pr_cust("\n:::sdhci_set_clock:%d host: %08x name: %s\n", set_clock_counter, host, host->name);
-//    pr_cust("\n:::sdhci_set_clock:%d\n", clock);
-//    pr_cust(":::sdhci_set_clock 1- pausing\n");
-//    udelay(3*1000*1000);
-//    pr_cust(":::sdhci_set_clock 1- continuing\n");
 	/* Wait max 20 ms */
 	timeout = 200;
 	while (sdhci_readl(host, SDHCI_PRESENT_STATE) &
@@ -354,13 +349,6 @@ static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		timeout--;
 		udelay(100);
 	}
-
-    if (set_clock_counter == 2) {
-        pr_cust(":::sdhci_set_clock middle 1 - host: %08x\n", host);
-        pr_cust(":::sdhci_set_clock middle 1 - pausing\n");
-        udelay(3*1000*1000);
-        pr_cust(":::sdhci_set_clock middle 1 - continuing\n");
-    }
 
     sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
 
@@ -433,22 +421,7 @@ static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 	}
 	clk |= SDHCI_CLOCK_CARD_EN;
 
-    if (set_clock_counter == 2) {
-        pr_cust(":::sdhci_set_clock middle 2 - host: %08x\n", host);
-        pr_cust(":::sdhci_set_clock middle 2 - pausing\n");
-        udelay(3*1000*1000);
-        pr_cust(":::sdhci_set_clock middle 2 - continuing\n");
-    }
-
     sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
-    pr_cust(":::register_log,write,2,%08x,%08x,%08x\n",host->ioaddr + SDHCI_CLOCK_CONTROL, SDHCI_CLOCK_CONTROL, clk);
-
-    if (set_clock_counter == 2) {
-        pr_cust(":::sdhci_set_clock final - host: %08x\n", host);
-        pr_cust(":::sdhci_set_clock final - pausing\n");
-        udelay(5*1000*1000);
-        pr_cust(":::sdhci_set_clock final - continuing\n");
-	}
 
     return 0;
 }
@@ -494,16 +467,10 @@ static int sdhci_set_ios(struct mmc *mmc)
 	u32 ctrl;
 	struct sdhci_host *host = mmc->priv;
 
-    pr_cust(":::sdhci_set_ios: host: %08x\n", host);
-    pr_cust(":::sdhci_set_ios 1- pausing\n");
-    udelay(3*1000*1000);
-    pr_cust(":::sdhci_set_ios 1- continuing\n");
-
 	if (host->ops && host->ops->set_control_reg)
 		host->ops->set_control_reg(host);
 
 	if (mmc->clock != host->clock) {
-        pr_cust(":::sdhci_set_ios: set_clock: %08x\n", mmc->clock);
         sdhci_set_clock(mmc, mmc->clock);
 	}
 
@@ -539,9 +506,6 @@ static int sdhci_set_ios(struct mmc *mmc)
     pr_cust(":::sdhci_set_ios: ctrl: %08x\n", ctrl);
     sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
 
-//    pr_cust(":::sdhci_set_ios 2- pausing\n");
-//    udelay(3*1000*1000);
-//    pr_cust(":::sdhci_set_ios 2- continuing\n");
 	/* If available, call the driver specific "post" set_ios() function */
 	if (host->ops && host->ops->set_ios_post)
 		host->ops->set_ios_post(host);
@@ -553,10 +517,6 @@ static int sdhci_init(struct mmc *mmc)
 {
 	struct sdhci_host *host = mmc->priv;
 
-    pr_cust(":::sdhci_init: host: %08x\n", host);
-    pr_cust(":::sdhci_init 1- pausing\n");
-    udelay(3*1000*1000);
-    pr_cust(":::sdhci_init 1- continuing\n");
 	sdhci_reset(host, SDHCI_RESET_ALL);
 
 	if ((host->quirks & SDHCI_QUIRK_32BIT_DMA_ADDR) && !aligned_buffer) {
@@ -568,9 +528,6 @@ static int sdhci_init(struct mmc *mmc)
 		}
 	}
 
-//    pr_cust(":::sdhci_init 2- pausing\n");
-//    udelay(5*1000*1000);
-//    pr_cust(":::sdhci_init 2- continuing\n");
 	sdhci_set_power(host, fls(mmc->cfg->voltages) - 1);
 
 	if (host->ops && host->ops->get_cd)
@@ -582,9 +539,6 @@ static int sdhci_init(struct mmc *mmc)
 	/* Mask all sdhci interrupt sources */
 	sdhci_writel(host, 0x0, SDHCI_SIGNAL_ENABLE);
 
-//    pr_cust(":::sdhci_init 3- pausing\n");
-//    udelay(3*1000*1000);
-//    pr_cust(":::sdhci_init 3- continuing\n");
 	return 0;
 }
 
@@ -617,9 +571,6 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 	u32 caps, caps_1 = 0;
 
     pr_cust(":::sdhci_setup_cfg\n");
-//    pr_cust(":::sdhci_setup_cfg- pausing\n");
-//    udelay(3*1000*1000);
-//    pr_cust(":::sdhci_setup_cfg- continuing\n");
 	caps = sdhci_readl(host, SDHCI_CAPABILITIES);
 
 #ifdef CONFIG_MMC_SDHCI_SDMA

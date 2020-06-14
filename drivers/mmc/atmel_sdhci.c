@@ -62,8 +62,6 @@ static int atmel_sdhci_probe(struct udevice *dev)
 
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret)
-		return ret;
-
 	ret = clk_enable(&clk);
 	if (ret)
 		return ret;
