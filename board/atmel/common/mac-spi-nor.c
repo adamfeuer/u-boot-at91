@@ -7,7 +7,7 @@
 
 #include <common.h>
 #include <dm.h>
-#include <environment.h>
+#include <env.h>
 #include <linux/mtd/spi-nor.h>
 #include <netdev.h>
 

@@ -3,6 +3,7 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/arch/at91_sfr.h>
 #include <asm/arch/sama5d3_smc.h>
@@ -11,6 +12,7 @@
 #include <asm/arch/at91_rstc.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/clk.h>
+#include <env.h>
 #include <micrel.h>
 #include <net.h>
 #include <netdev.h>

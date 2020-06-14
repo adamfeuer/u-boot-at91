@@ -41,7 +41,6 @@
 #define FAT_ENV_INTERFACE	"mmc"
 #define FAT_ENV_DEVICE_AND_PART	"0"
 #define FAT_ENV_FILE		"uboot.env"
-#define CONFIG_ENV_SIZE		0x4000
 /* bootstrap + u-boot + env in sd card */
 #define CONFIG_BOOTCOMMAND	"fatload mmc 0:1 0x21000000 at91-sama5d2_icp.dtb; " \
 				"fatload mmc 0:1 0x22000000 zImage; " \
@@ -52,7 +51,6 @@
 #endif
 
 /* SPL */
-#define CONFIG_SPL_TEXT_BASE		0x200000
 #define CONFIG_SPL_MAX_SIZE		0x10000
 #define CONFIG_SPL_BSS_START_ADDR	0x20000000
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000

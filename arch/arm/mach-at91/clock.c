@@ -129,7 +129,7 @@ void at91_pllicpr_init(u32 icpr)
 	writel(icpr, &pmc->pllicpr);
 }
 #endif
-
+#if 0
 /* Called by macro WATCHDOG_RESET */
 void watchdog_reset(void)
 {
@@ -172,3 +172,4 @@ int arch_early_init_r(void)
 
 	return 0;
 }
+#endif

@@ -15,6 +15,7 @@
 
 	chosen {
 		stdout-path = &dbgu;
+		i2c0 = &flx0;
 	};
 
 	onewire_tm: onewire {
@@ -46,14 +47,24 @@
 			};
 
 			flx0: flexcom@f801c600 {
-				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_flx0>;
+				atmel,flexcom-mode = <3>;
 				status = "okay";
 
-				eeprom@53 {
-					compatible = "atmel,24c32";
-					reg = <0x53>;
-					pagesize = <16>;
+				i2c@600 {
+					compatible = "atmel,sama5d2-i2c";
+					reg = <0x600 0x200>;
+					pinctrl-names = "default";
+					pinctrl-0 = <&pinctrl_flx0>;
+					#address-cells = <1>;
+					#size-cells = <0>;
+					clocks = <&flx0_clk>;
+					status = "okay";
+
+					eeprom@53 {
+						compatible = "atmel,24c32";
+						reg = <0x53>;
+						pagesize = <16>;
+					};
 				};
 			};
 

@@ -88,9 +88,6 @@
 #define CONFIG_SYS_LOAD_ADDR	ATMEL_BASE_CS6
 
 /* bootstrap + u-boot + env in nandflash */
-#define CONFIG_ENV_OFFSET		0x100000
-#define CONFIG_ENV_OFFSET_REDUND	0x180000
-#define CONFIG_ENV_SIZE			SZ_128K
 
 #define CONFIG_BOOTCOMMAND						\
 	"nand read 0x70000000 0x200000 0x300000;"			\
@@ -103,7 +100,6 @@
 				SZ_4M, 0x1000)
 
 /* Defines for SPL */
-#define CONFIG_SPL_TEXT_BASE		0x300000
 #define CONFIG_SPL_MAX_SIZE		(12 * SZ_1K)
 #define CONFIG_SPL_STACK		(SZ_16K)
 
